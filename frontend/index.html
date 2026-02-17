@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>S.O.L.A.R Tactical Console</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>S.O.L.A.R</h1>
+        <p>Sentinel Operations, Learning, Analytics and Response</p>
+      </div>
+      <button id="refresh-btn">Refresh</button>
+    </header>
+
+    <main class="layout">
+      <section class="panel map-panel">
+        <h2>Tactical Map</h2>
+        <div id="map"></div>
+      </section>
+
+      <section class="panel timeline-panel">
+        <h2>Event Timeline</h2>
+        <div id="timeline" class="scroll-list"></div>
+      </section>
+
+      <section class="panel alerts-panel">
+        <h2>Predictive Alerts</h2>
+        <button id="evaluate-btn">Run Evaluation</button>
+        <div id="alerts" class="scroll-list"></div>
+      </section>
+
+      <section class="panel chat-panel">
+        <h2>AI Analytical Chat</h2>
+        <div id="chat-output" class="scroll-list chat-output"></div>
+        <form id="chat-form">
+          <input id="chat-input" type="text" placeholder="Ask about risk, anomalies, patterns, ML, or deep learning" required />
+          <button type="submit">Send</button>
+        </form>
+      </section>
+
+      <section class="panel model-panel">
+        <h2>ML and Deep Learning Risk</h2>
+        <button id="train-models-btn">Train Models</button>
+        <div id="model-output" class="scroll-list"></div>
+      </section>
+
+      <section class="panel ingest-panel">
+        <h2>Quick Ingestion</h2>
+        <p>Generate synthetic camera/GPS/OCR events for demonstration.</p>
+        <button id="ingest-btn">Insert Demo Event</button>
+      </section>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

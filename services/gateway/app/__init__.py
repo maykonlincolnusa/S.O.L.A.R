@@ -1,0 +1,2 @@
+"""Gateway FastAPI app."""
+

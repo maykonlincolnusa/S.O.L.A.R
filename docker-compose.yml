@@ -1,0 +1,137 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: solar-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-solar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-solar123}
+      POSTGRES_DB: ${POSTGRES_DB:-solar}
+    ports:
+      - "5432:5432"
+    volumes:
+      - solar_pg_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U solar -d solar"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: solar-redis
+    ports:
+      - "6379:6379"
+
+  ingestion:
+    build:
+      context: .
+      dockerfile: services/ingestion/Dockerfile
+    container_name: solar-ingestion
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://solar:solar123@postgres:5432/solar}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      STREAM_NAME: ${STREAM_NAME:-solar:events}
+      LGPD_STRICT_MODE: ${LGPD_STRICT_MODE:-true}
+      HASH_PLATE_TEXT: ${HASH_PLATE_TEXT:-true}
+      PII_HASH_SALT: ${PII_HASH_SALT:-solar-dev-salt}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8001:8001"
+
+  analytics:
+    build:
+      context: .
+      dockerfile: services/analytics/Dockerfile
+    container_name: solar-analytics
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://solar:solar123@postgres:5432/solar}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8002:8002"
+
+  semantic:
+    build:
+      context: .
+      dockerfile: services/semantic/Dockerfile
+    container_name: solar-semantic
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://solar:solar123@postgres:5432/solar}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8003:8003"
+
+  alerting:
+    build:
+      context: .
+      dockerfile: services/alerting/Dockerfile
+    container_name: solar-alerting
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://solar:solar123@postgres:5432/solar}
+      ANALYTICS_URL: ${ANALYTICS_URL:-http://analytics:8002}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      analytics:
+        condition: service_started
+    ports:
+      - "8004:8004"
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    container_name: solar-gateway
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://solar:solar123@postgres:5432/solar}
+      INGESTION_URL: ${INGESTION_URL:-http://ingestion:8001}
+      ANALYTICS_URL: ${ANALYTICS_URL:-http://analytics:8002}
+      SEMANTIC_URL: ${SEMANTIC_URL:-http://semantic:8003}
+      ALERTING_URL: ${ALERTING_URL:-http://alerting:8004}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+      SOLAR_REQUIRE_API_KEY: ${SOLAR_REQUIRE_API_KEY:-true}
+      SOLAR_API_KEYS: ${SOLAR_API_KEYS:-dev-admin-key:admin:dev-admin,dev-operator-key:operator:dev-operator,dev-analyst-key:analyst:dev-analyst,dev-viewer-key:viewer:dev-viewer,dev-ingest-key:ingestion:dev-ingest,dev-compliance-key:compliance:dev-compliance}
+    depends_on:
+      ingestion:
+        condition: service_started
+      analytics:
+        condition: service_started
+      semantic:
+        condition: service_started
+      alerting:
+        condition: service_started
+    ports:
+      - "8080:8080"
+
+  stream-processor:
+    build:
+      context: .
+      dockerfile: services/stream_processor/Dockerfile
+    container_name: solar-stream-processor
+    profiles: ["streaming"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://solar:solar123@postgres:5432/solar}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      STREAM_NAME: ${STREAM_NAME:-solar:events}
+      STREAM_SIGNAL_RISK_THRESHOLD: ${STREAM_SIGNAL_RISK_THRESHOLD:-0.8}
+      STREAM_SIGNAL_ANOMALY_THRESHOLD: ${STREAM_SIGNAL_ANOMALY_THRESHOLD:-0.8}
+      STREAM_WINDOW_SIZE: ${STREAM_WINDOW_SIZE:-240}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8005:8005"
+
+volumes:
+  solar_pg_data:

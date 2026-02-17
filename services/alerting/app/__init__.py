@@ -1,0 +1,2 @@
+"""Alerting FastAPI app."""
+

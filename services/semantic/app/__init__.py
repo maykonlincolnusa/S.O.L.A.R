@@ -1,0 +1,2 @@
+"""Semantic FastAPI app."""
+
